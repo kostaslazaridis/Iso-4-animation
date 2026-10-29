@@ -1,0 +1,974 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>Circular test replay — ISO 230-4</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@400;500;700&family=IBM+Plex+Mono:wght@400;500&display=swap" rel="stylesheet">
+<style>
+:root{
+  --deep:#05171C;
+  --panel:#0C262C;
+  --panel-2:#0F2F36;
+  --rule:#1B4149;
+  --text:#DDEFEA;
+  --mute:#7FA3A4;
+  --ccw:#F2A65A;
+  --cw:#5FD3F3;
+  --ref:#8CA6A8;
+  --flag:#FF6B5E;
+  --rack:#79D6A3;
+  box-sizing:border-box;
+  padding-top:env(safe-area-inset-top,0px);
+  padding-bottom:env(safe-area-inset-bottom,0px);
+  color-scheme:dark;
+}
+*,*::before,*::after{box-sizing:inherit}
+html,body{height:100%}
+body{
+  margin:0;background:var(--deep);color:var(--text);
+  font-family:"Space Grotesk",system-ui,-apple-system,Segoe UI,sans-serif;
+  font-size:14px;line-height:1.45;overflow:hidden;
+}
+button,input,select{font:inherit;color:inherit}
+:focus-visible{outline:2px solid var(--ccw);outline-offset:2px}
+
+.app{display:flex;flex-direction:column;height:100%;min-height:0}
+
+header{
+  display:flex;align-items:baseline;gap:18px;flex-wrap:wrap;
+  padding:12px 20px 10px;border-bottom:1px solid var(--rule);
+}
+header h1{
+  margin:0;font-size:19px;font-weight:700;letter-spacing:-.015em;
+}
+header h1 span{color:var(--mute);font-weight:400}
+.filename{
+  font-family:"IBM Plex Mono",ui-monospace,monospace;font-size:12.5px;color:var(--mute);
+  max-width:40ch;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;
+}
+.spacer{flex:1}
+.btn{
+  background:var(--panel-2);border:1px solid var(--rule);border-radius:3px;
+  padding:7px 13px;cursor:pointer;transition:background .12s;
+}
+.btn:hover{background:#15434C}
+.btn.primary{background:var(--ccw);border-color:var(--ccw);color:#04161A;font-weight:500}
+.btn.primary:hover{background:#F7B978}
+.btn.ghost{background:transparent}
+
+main{
+  flex:1;min-height:0;display:grid;
+  grid-template-columns:268px minmax(0,1fr) 330px;
+  grid-template-rows:minmax(0,1fr) 148px;
+  grid-template-areas:"rail stage side" "rail strip strip";
+}
+.rail{grid-area:rail;border-right:1px solid var(--rule);overflow-y:auto;padding:16px 16px 28px}
+.stage{grid-area:stage;position:relative;min-width:0;min-height:0}
+.side{grid-area:side;border-left:1px solid var(--rule);display:flex;flex-direction:column;min-height:0}
+.strip{grid-area:strip;border-top:1px solid var(--rule);position:relative;min-width:0}
+
+.cvwrap{position:absolute;inset:0}
+.cvwrap canvas{position:absolute;inset:0;width:100%;height:100%}
+
+.gantry{position:relative;flex:1;min-height:0}
+.gantry .tag{
+  position:absolute;left:12px;top:10px;font-size:11.5px;color:var(--mute);z-index:2;
+}
+.readout{
+  border-top:1px solid var(--rule);padding:11px 14px 13px;
+  display:grid;grid-template-columns:1fr 1fr;gap:4px 10px;
+  font-family:"IBM Plex Mono",ui-monospace,monospace;font-size:12px;
+}
+.readout div{display:flex;justify-content:space-between;gap:8px}
+.readout b{font-weight:500;color:var(--mute);font-family:"Space Grotesk",sans-serif;font-size:11.5px}
+
+.railsec{margin-bottom:22px}
+.railsec h2{
+  margin:0 0 9px;font-size:12.5px;font-weight:500;color:var(--mute);
+  padding-bottom:6px;border-bottom:1px solid var(--rule);
+}
+.metric{display:flex;justify-content:space-between;align-items:baseline;gap:10px;padding:4px 0}
+.metric .k{font-size:12.5px}
+.metric .k em{font-style:normal;color:var(--mute);font-size:11px;display:block;margin-top:-2px}
+.metric .v{font-family:"IBM Plex Mono",ui-monospace,monospace;font-size:13.5px;white-space:nowrap}
+.metric.ccw .v{color:var(--ccw)}
+.metric.cw .v{color:var(--cw)}
+.hint{font-size:11.5px;color:var(--mute);line-height:1.5}
+.hint a{color:var(--ref)}
+
+.transport{
+  border-top:1px solid var(--rule);padding:10px 18px 12px;
+  display:flex;align-items:center;gap:16px;flex-wrap:wrap;
+}
+.tbtn{
+  width:36px;height:34px;display:grid;place-items:center;border-radius:3px;
+  background:var(--panel-2);border:1px solid var(--rule);cursor:pointer;
+}
+.tbtn[aria-pressed="true"]{background:var(--rule);border-color:var(--ref)}
+.scrubwrap{flex:1 1 240px;display:flex;align-items:center;gap:12px;min-width:200px}
+.clock{font-family:"IBM Plex Mono",ui-monospace,monospace;font-size:12.5px;color:var(--mute);white-space:nowrap}
+.ctrl{display:flex;flex-direction:column;gap:3px;min-width:168px}
+.ctrl label{font-size:11px;color:var(--mute);display:flex;justify-content:space-between;gap:10px}
+.ctrl label b{font-family:"IBM Plex Mono",ui-monospace,monospace;font-weight:500;color:var(--text)}
+.chips{display:flex;gap:4px;margin-top:2px}
+.chips button{
+  background:transparent;border:1px solid var(--rule);border-radius:3px;
+  font-size:11px;padding:1px 6px;cursor:pointer;color:var(--mute);
+  font-family:"IBM Plex Mono",monospace;
+}
+.chips button:hover{color:var(--text);border-color:var(--ref)}
+
+input[type=range]{-webkit-appearance:none;appearance:none;background:transparent;width:100%;height:18px;cursor:pointer}
+input[type=range]::-webkit-slider-runnable-track{height:3px;background:var(--rule);border-radius:2px}
+input[type=range]::-moz-range-track{height:3px;background:var(--rule);border-radius:2px}
+input[type=range]::-webkit-slider-thumb{-webkit-appearance:none;width:13px;height:13px;border-radius:50%;background:var(--text);margin-top:-5px}
+input[type=range]::-moz-range-thumb{width:13px;height:13px;border:0;border-radius:50%;background:var(--text)}
+
+.toggle{display:flex;align-items:center;gap:7px;font-size:11.5px;color:var(--mute);cursor:pointer}
+.toggle input{accent-color:var(--ccw)}
+
+.empty{
+  position:absolute;inset:0;display:grid;place-items:center;text-align:center;
+  padding:30px;z-index:5;background:var(--deep);
+}
+.empty .ring{
+  width:min(52vh,330px);aspect-ratio:1;border:1px dashed var(--rule);border-radius:50%;
+  display:grid;place-items:center;padding:34px;
+}
+.empty h3{margin:0 0 8px;font-size:17px;font-weight:500}
+.empty p{margin:0 0 16px;font-size:12.5px;color:var(--mute);max-width:30ch}
+.empty .row{display:flex;gap:8px;justify-content:center;flex-wrap:wrap}
+body.dragging .empty .ring{border-color:var(--ccw)}
+
+.loading{
+  position:absolute;inset:0;z-index:9;display:none;place-items:center;
+  background:rgba(5,23,28,.88);font-size:13px;color:var(--mute);
+}
+body.busy .loading{display:grid}
+.err{color:var(--flag);font-size:12px;margin-top:10px;min-height:1em}
+
+@media (max-width:1080px){
+  body{overflow:auto}
+  main{display:block;height:auto}
+  .rail{border-right:0;border-bottom:1px solid var(--rule)}
+  .side{border-left:0;border-top:1px solid var(--rule)}
+  .stage{height:78vw;max-height:560px}
+  .gantry{height:62vw;max-height:380px}
+  .strip{height:150px}
+}
+@media (prefers-reduced-motion:reduce){*{transition:none!important}}
+</style>
+</head>
+<body>
+<div class="app">
+  <header>
+    <h1>Circular test replay <span>· ISO 230-4</span></h1>
+    <div class="filename" id="fname">no run loaded</div>
+    <div class="spacer"></div>
+    <button class="btn ghost" id="btnShot">Save image</button>
+    <button class="btn ghost" id="btnDemo">Load synthetic run</button>
+    <button class="btn primary" id="btnOpen">Open CSV</button>
+    <input type="file" id="file" accept=".csv,text/csv" hidden>
+  </header>
+
+  <main>
+    <div class="rail">
+      <div class="railsec">
+        <h2>Circle fit</h2>
+        <div class="metric"><span class="k">Best-fit radius</span><span class="v" id="mR">—</span></div>
+        <div class="metric"><span class="k">Centre</span><span class="v" id="mC">—</span></div>
+        <div class="metric"><span class="k">Contouring feed</span><span class="v" id="mF">—</span></div>
+        <div class="metric"><span class="k">Complete laps</span><span class="v" id="mL">—</span></div>
+      </div>
+      <div class="railsec">
+        <h2>Deviation parameters</h2>
+        <div class="metric"><span class="k">G(b)<em>bidirectional</em></span><span class="v" id="mGb">—</span></div>
+        <div class="metric ccw"><span class="k">G counter-clockwise<em>G<sub>XY</sub></em></span><span class="v" id="mGccw">—</span></div>
+        <div class="metric cw"><span class="k">G clockwise<em>G<sub>YX</sub></em></span><span class="v" id="mGcw">—</span></div>
+        <div class="metric"><span class="k">Directional offset<em>mean, CCW − CW</em></span><span class="v" id="mD">—</span></div>
+        <div class="metric"><span class="k">Peak separation<em>largest CCW − CW</em></span><span class="v" id="mDpk">—</span></div>
+        <div class="metric ccw"><span class="k">F range CCW</span><span class="v" id="mFccw">—</span></div>
+        <div class="metric cw"><span class="k">F range CW</span><span class="v" id="mFcw">—</span></div>
+      </div>
+      <div class="railsec">
+        <h2>Gantry</h2>
+        <div class="metric"><span class="k">Racking range<em>Y1 − Y2</em></span><span class="v" id="mRack">—</span></div>
+        <div class="metric"><span class="k">Samples</span><span class="v" id="mN">—</span></div>
+        <div class="metric"><span class="k">Rate</span><span class="v" id="mHz">—</span></div>
+      </div>
+      <div class="railsec">
+        <h2>About the numbers</h2>
+        <p class="hint">
+          The centre is fitted to the measured path, so radial deviations are reported
+          against a best-fit circle rather than the commanded one. G values therefore
+          carry no displacement calibration of the scales; treat F and D as indicative.
+        </p>
+        <p class="hint" style="margin-top:10px">
+          Files are read in your browser. Nothing is uploaded and nothing is kept
+          after you close the tab.
+        </p>
+      </div>
+    </div>
+
+    <div class="stage">
+      <div class="cvwrap">
+        <canvas id="polarTrail"></canvas>
+        <canvas id="polarFx"></canvas>
+      </div>
+      <div class="empty" id="empty">
+        <div class="ring">
+          <div>
+            <h3>Drop a circular-test CSV here</h3>
+            <p>Encoder stream or paired cmd/act export. Both layouts are detected automatically.</p>
+            <div class="row">
+              <button class="btn primary" id="btnOpen2">Open CSV</button>
+              <button class="btn" id="btnDemo2">Use synthetic run</button>
+            </div>
+            <div class="err" id="err"></div>
+          </div>
+        </div>
+      </div>
+      <div class="loading"><div>Reading run…</div></div>
+    </div>
+
+    <div class="side">
+      <div class="gantry">
+        <div class="tag" id="gtag">Gantry, top view</div>
+        <div class="cvwrap">
+          <canvas id="gantTrail"></canvas>
+          <canvas id="gantFx"></canvas>
+        </div>
+      </div>
+      <div class="readout">
+        <div><b>t</b><span id="rT">—</span></div>
+        <div><b>θ</b><span id="rTh">—</span></div>
+        <div><b>radial</b><span id="rDev">—</span></div>
+        <div><b>racking</b><span id="rRack">—</span></div>
+        <div><b>X</b><span id="rX">—</span></div>
+        <div><b>Y</b><span id="rY">—</span></div>
+        <div><b>Z</b><span id="rZ">—</span></div>
+        <div><b>speed</b><span id="rV">—</span></div>
+      </div>
+    </div>
+
+    <div class="strip">
+      <div class="cvwrap">
+        <canvas id="tsBase"></canvas>
+        <canvas id="tsFx"></canvas>
+      </div>
+    </div>
+  </main>
+
+  <div class="transport">
+    <button class="tbtn" id="btnRew" title="Back to start">⏮</button>
+    <button class="tbtn" id="btnPlay" title="Play / pause (space)">▶</button>
+    <button class="tbtn" id="btnLoop" aria-pressed="true" title="Loop">↻</button>
+    <div class="scrubwrap">
+      <input type="range" id="scrub" min="0" max="2000" value="0" step="1" aria-label="Position in run">
+      <span class="clock" id="clock">0.000 / 0.000 s</span>
+    </div>
+    <div class="ctrl">
+      <label for="speed">Playback speed <b id="speedV">1.00×</b></label>
+      <input type="range" id="speed" min="0" max="1000" value="1000" aria-label="Playback speed">
+      <div class="chips">
+        <button data-sp="1">1×</button><button data-sp="0.25">0.25×</button>
+        <button data-sp="0.05">0.05×</button><button data-sp="0.01">0.01×</button>
+        <button data-sp="0.002">0.002×</button>
+      </div>
+    </div>
+    <div class="ctrl">
+      <label for="mag">Error magnification <b id="magV">×1.0</b></label>
+      <input type="range" id="mag" min="0" max="1000" value="473" aria-label="Error magnification">
+      <label class="toggle"><input type="checkbox" id="autoslow" checked> Slow down through reversals</label>
+    </div>
+  </div>
+</div>
+
+<script>
+"use strict";
+const $ = s => document.querySelector(s);
+const DPR = () => Math.min(window.devicePixelRatio || 1, 2);
+
+/* ---------- state ---------- */
+const S = {
+  d:null, t:0, playing:false, loop:true, speed:1, mag:1, autoslow:true,
+  trailIdx:-1, gTrailIdx:-1, idx:0, last:0
+};
+
+/* ---------- csv ---------- */
+function parseCSV(text, name){
+  let head = text.indexOf("\n");
+  if(head < 0) throw new Error("The file has no rows.");
+  let hline = text.slice(0, head).replace(/\r$/,"");
+  const delim = (hline.split(";").length > hline.split(",").length) ? ";" : ",";
+  const cols = hline.split(delim).map(s => s.trim().toLowerCase().replace(/^"|"$/g,""));
+  const col = (...names) => { for(const nm of names){ const i = cols.indexOf(nm); if(i>=0) return i; } return -1; };
+
+  const iT  = col("time","recv_time","epoch");
+  const iX  = col("act_x","x");
+  const iY1 = col("act_y1","y1");
+  const iY2 = col("act_y2","y2");
+  const iY  = col("act_y","y");
+  const iZ  = col("act_z","z");
+  const iCX = col("cmd_x"), iCY = col("cmd_y");
+  if(iX < 0 || (iY1 < 0 && iY < 0)) throw new Error("No X / Y encoder columns found in the header.");
+
+  const lines = text.split("\n");
+  const n0 = lines.length - 1;
+  const t = new Float64Array(n0), x = new Float32Array(n0), y1 = new Float32Array(n0),
+        y2 = new Float32Array(n0), z = new Float32Array(n0);
+  const hasCmd = iCX >= 0 && iCY >= 0;
+  const cx = hasCmd ? new Float32Array(n0) : null, cy = hasCmd ? new Float32Array(n0) : null;
+
+  let n = 0;
+  for(let i = 1; i < lines.length; i++){
+    const L = lines[i];
+    if(!L || L.length < 3) continue;
+    const f = L.split(delim);
+    const X = +f[iX];
+    if(!isFinite(X)) continue;
+    const A = iY1 >= 0 ? +f[iY1] : +f[iY];
+    const B = iY2 >= 0 ? +f[iY2] : A;
+    if(!isFinite(A) || !isFinite(B)) continue;
+    t[n] = iT >= 0 ? +f[iT] : n;
+    x[n] = X; y1[n] = A; y2[n] = B;
+    z[n] = iZ >= 0 ? (+f[iZ] || 0) : 0;
+    if(hasCmd){ cx[n] = +f[iCX]; cy[n] = +f[iCY]; }
+    n++;
+  }
+  if(n < 200) throw new Error("Only " + n + " usable rows. This does not look like a circular run.");
+  const t0 = t[0];
+  for(let i = 0; i < n; i++) t[i] -= t0;
+  return build({name, n, t:t.subarray(0,n), x:x.subarray(0,n), y1:y1.subarray(0,n),
+                y2:y2.subarray(0,n), z:z.subarray(0,n),
+                cx:hasCmd?cx.subarray(0,n):null, cy:hasCmd?cy.subarray(0,n):null});
+}
+
+/* ---------- geometry ---------- */
+function fitCircle(x, y, keep){
+  let Sx=0,Sy=0,Sxx=0,Syy=0,Sxy=0,Sz=0,Sxz=0,Syz=0;
+  const N = keep.length;
+  for(let k=0;k<N;k++){
+    const i=keep[k], X=x[i], Y=y[i], Z=X*X+Y*Y;
+    Sx+=X; Sy+=Y; Sxx+=X*X; Syy+=Y*Y; Sxy+=X*Y; Sz+=Z; Sxz+=X*Z; Syz+=Y*Z;
+  }
+  const M=[[Sxx,Sxy,Sx],[Sxy,Syy,Sy],[Sx,Sy,N]], v=[Sxz,Syz,Sz];
+  for(let c=0;c<3;c++){
+    let p=c; for(let r=c+1;r<3;r++) if(Math.abs(M[r][c])>Math.abs(M[p][c])) p=r;
+    [M[c],M[p]]=[M[p],M[c]]; [v[c],v[p]]=[v[p],v[c]];
+    if(Math.abs(M[c][c])<1e-12) return null;
+    for(let r=c+1;r<3;r++){ const f=M[r][c]/M[c][c]; for(let k=c;k<3;k++) M[r][k]-=f*M[c][k]; v[r]-=f*v[c]; }
+  }
+  const s=[0,0,0];
+  for(let r=2;r>=0;r--){ let acc=v[r]; for(let k=r+1;k<3;k++) acc-=M[r][k]*s[k]; s[r]=acc/M[r][r]; }
+  const a=s[0]/2, b=s[1]/2, R2=s[2]+a*a+b*b;
+  if(!(R2>0)) return null;
+  return {a, b, R:Math.sqrt(R2)};
+}
+function median(arr){ const c=Float64Array.from(arr); c.sort(); return c[c.length>>1]; }
+
+function build(d){
+  const n = d.n;
+  const y = new Float32Array(n);
+  for(let i=0;i<n;i++) y[i] = (d.y1[i] + d.y2[i]) * 0.5;
+  d.y = y;
+
+  let keep = new Int32Array(n); for(let i=0;i<n;i++) keep[i]=i;
+  let fit = fitCircle(d.x, y, keep);
+  if(!fit) throw new Error("Could not fit a circle to this path.");
+  for(let pass=0; pass<7; pass++){
+    const res = new Float64Array(n);
+    for(let i=0;i<n;i++){
+      const dx=d.x[i]-fit.a, dy=y[i]-fit.b;
+      res[i] = Math.abs(Math.hypot(dx,dy) - fit.R);
+    }
+    const med = median(res);
+    const lim = Math.max(0.12, med * 1.6);
+    const nk = [];
+    for(let i=0;i<n;i++) if(res[i] < lim) nk.push(i);
+    if(nk.length < 150) break;
+    const f2 = fitCircle(d.x, y, nk);
+    if(!f2) break;
+    fit = f2; keep = nk;
+    if(nk.length > n*0.97) break;
+  }
+  if(fit.R < 1) throw new Error("The fitted radius is implausibly small. Is this a circular run?");
+  d.fit = fit;
+
+  const dev = new Float32Array(n), th = new Float32Array(n), onc = new Uint8Array(n);
+  for(let i=0;i<n;i++){
+    const dx=d.x[i]-fit.a, dy=y[i]-fit.b, r=Math.hypot(dx,dy);
+    dev[i] = (r - fit.R) * 1000;
+    th[i]  = Math.atan2(dy, dx);
+    onc[i] = Math.abs(r - fit.R) < Math.max(0.6, fit.R*0.01) ? 1 : 0;
+  }
+  d.dev = dev; d.th = th; d.onc = onc;
+
+  const rack = new Float32Array(n), spd = new Float32Array(n);
+  let r0 = d.y1[0] - d.y2[0];
+  for(let i=0;i<n;i++) rack[i] = (d.y1[i] - d.y2[i] - r0) * 1000;
+  const SW = 6;
+  for(let i=0;i<n;i++){
+    const a=Math.max(0,i-SW), b=Math.min(n-1,i+SW), dt=d.t[b]-d.t[a];
+    spd[i] = dt > 1e-6 ? Math.hypot(d.x[b]-d.x[a], y[b]-y[a]) / dt * 60 : 0;
+  }
+  d.rack = rack; d.spd = spd;
+
+  /* Direction and laps.
+     A run holds a lead-in arc, several circles one way, then the same the other
+     way, all in one unbroken on-circle stretch. Net sweep is therefore useless
+     for direction: use the local angular rate, split into same-sign blocks, and
+     take whole 2π laps counted back from the end of each block so the lead-in
+     arc falls outside the measured laps. */
+  const dir = new Int8Array(n), lap = new Int16Array(n).fill(-1);
+  const laps = [];
+  let i = 0, lapN = 0;
+  const W = 30;
+  while(i < n){
+    if(!onc[i]){ i++; continue; }
+    let j = i; while(j+1 < n && onc[j+1]) j++;
+    const len = j - i + 1;
+    if(len > 200){
+      const un = new Float64Array(len);
+      for(let k=1;k<len;k++){
+        let dth = th[i+k] - th[i+k-1];
+        while(dth >  Math.PI) dth -= 2*Math.PI;
+        while(dth < -Math.PI) dth += 2*Math.PI;
+        un[k] = un[k-1] + dth;
+      }
+      const sg = new Int8Array(len);
+      for(let k=0;k<len;k++){
+        const a = Math.max(0,k-W), b = Math.min(len-1,k+W);
+        sg[k] = Math.sign(un[b]-un[a]) || 0;
+        dir[i+k] = sg[k];
+      }
+      let s = 0;
+      for(let k=1;k<=len;k++){
+        if(k === len || sg[k] !== sg[s]){
+          const a = s, b = k-1, sweep = un[b]-un[a], sd = Math.sign(sweep);
+          const nl = Math.floor(Math.abs(sweep)/(2*Math.PI));
+          for(let q=0;q<nl;q++){
+            const hi = un[b] - sd*q*2*Math.PI, lo = hi - sd*2*Math.PI;
+            let la = -1, lb = -1;
+            for(let m=a;m<=b;m++){
+              if((un[m]-lo)*sd >= 0 && (un[m]-hi)*sd <= 0){ if(la<0) la = m; lb = m; }
+            }
+            if(la >= 0 && lb > la){
+              laps.push({a:i+la, b:i+lb, dir:sd});
+              for(let m=la;m<=lb;m++) lap[i+m] = lapN;
+              lapN++;
+            }
+          }
+          s = k;
+        }
+      }
+    }
+    i = j + 1;
+  }
+  d.dir = dir; d.lap = lap; d.laps = laps;
+
+  /* ISO parameters over complete laps */
+  const acc = {1:[], '-1':[]};
+  let gmin = Infinity, gmax = -Infinity;
+  for(const L of laps){
+    const bucket = acc[L.dir];
+    for(let k=L.a;k<=L.b;k++){
+      bucket.push(dev[k]);
+      if(dev[k]<gmin) gmin=dev[k];
+      if(dev[k]>gmax) gmax=dev[k];
+    }
+  }
+  const stat = arr => {
+    if(!arr.length) return null;
+    let mn=Infinity, mx=-Infinity, s=0;
+    for(const v of arr){ if(v<mn)mn=v; if(v>mx)mx=v; s+=v; }
+    return {min:mn, max:mx, G:mx-mn, mean:s/arr.length, n:arr.length};
+  };
+  const ccw = stat(acc[1]), cw = stat(acc['-1']);
+
+  /* directional separation on a common angular grid */
+  const NB = 720, sum = [new Float64Array(NB), new Float64Array(NB)],
+        cnt = [new Float64Array(NB), new Float64Array(NB)];
+  for(const L of laps){
+    const s = L.dir > 0 ? 0 : 1;
+    for(let k=L.a;k<=L.b;k++){
+      let q = Math.floor((th[k]+Math.PI)/(2*Math.PI)*NB) % NB; if(q<0) q += NB;
+      sum[s][q] += dev[k]; cnt[s][q]++;
+    }
+  }
+  let dsum = 0, dn = 0, dpk = 0;
+  for(let q=0;q<NB;q++){
+    if(cnt[0][q] && cnt[1][q]){
+      const diff = sum[0][q]/cnt[0][q] - sum[1][q]/cnt[1][q];
+      dsum += diff; dn++;
+      if(Math.abs(diff) > Math.abs(dpk)) dpk = diff;
+    }
+  }
+
+  d.m = {
+    Gb: (laps.length ? gmax-gmin : null), ccw, cw,
+    D: dn ? dsum/dn : null, Dpk: dn ? dpk : null,
+    feed: median(Array.from(d.spd).filter(v=>v>1)) || 0,
+    rate: n / Math.max(1e-6, d.t[n-1]-d.t[0]),
+    rackRange: (()=>{ let a=Infinity,b=-Infinity; for(let k=0;k<n;k++){ if(rack[k]<a)a=rack[k]; if(rack[k]>b)b=rack[k];} return b-a; })()
+  };
+  let maxAbs = 1;
+  for(const L of laps) for(let k=L.a;k<=L.b;k++) maxAbs = Math.max(maxAbs, Math.abs(dev[k]));
+  if(!laps.length) for(let k=0;k<n;k++) if(onc[k]) maxAbs = Math.max(maxAbs, Math.abs(dev[k]));
+  d.maxAbsDev = maxAbs;
+  d.dur = d.t[n-1] - d.t[0];
+  let xa=Infinity,xb=-Infinity,ya=Infinity,yb=-Infinity;
+  for(let k=0;k<n;k++){ if(d.x[k]<xa)xa=d.x[k]; if(d.x[k]>xb)xb=d.x[k]; if(y[k]<ya)ya=y[k]; if(y[k]>yb)yb=y[k]; }
+  d.bounds = {xa,xb,ya,yb};
+  return d;
+}
+
+/* ---------- synthetic run ---------- */
+function synthetic(){
+  const R=100, cxm=180, cym=180, feed=2000, rate=500, nlap=2, lead=Math.PI/3;
+  const v=feed/60, w=v/R;                     // rad/s
+  const dwell=400, seg=Math.round((nlap*2*Math.PI+lead)/w*rate);
+  const n=dwell*3+seg*2;
+  const t=new Float64Array(n), x=new Float32Array(n), y1=new Float32Array(n),
+        y2=new Float32Array(n), z=new Float32Array(n);
+  let k=0;
+  const push=(X,Y,rack)=>{ t[k]=k/rate; x[k]=X; y1[k]=Y+rack/2; y2[k]=Y-rack/2; z[k]=5; k++; };
+  for(let i=0;i<dwell;i++) push(cxm, cym, 0);
+  for(let d=0; d<2; d++){
+    const dir = d===0 ? 1 : -1;
+    for(let i=0;i<seg;i++){
+      const th = dir*(-lead + i/rate*w);
+      let r = R;
+      for(const q of [0, Math.PI/2, Math.PI, -Math.PI/2]){      // reversal steps
+        const dd = Math.atan2(Math.sin(th-q), Math.cos(th-q));
+        if(dir*dd > 0 && dir*dd < 0.16) r += 0.030*Math.exp(-Math.abs(dd)/0.028);
+      }
+      r += 0.020*Math.sin(2*th+0.6) + 0.007*Math.sin(5*th) + (Math.random()-0.5)*0.004;
+      r -= dir*0.011;                                            // directional offset
+      const X = cxm + r*Math.cos(th)*(1+3e-4);                   // X scale error
+      const Y = cym + r*Math.sin(th) + 6e-5*r*Math.cos(th);      // squareness
+      push(X, Y, 0.013*Math.sin(th + (dir>0?0:1.2)) + 0.004*Math.sin(3*th));
+    }
+    for(let i=0;i<dwell;i++) push(x[k-1], (y1[k-1]+y2[k-1])/2, 0);
+  }
+  return build({name:"synthetic run · R100 · 2000 mm/min · 2 laps each way", n:k,
+                t:t.subarray(0,k), x:x.subarray(0,k), y1:y1.subarray(0,k),
+                y2:y2.subarray(0,k), z:z.subarray(0,k), cx:null, cy:null});
+}
+
+/* ---------- canvases ---------- */
+const CV = {};
+function setup(id){
+  const c = $("#"+id); CV[id] = {c, g:c.getContext("2d"), w:0, h:0};
+  return CV[id];
+}
+["polarTrail","polarFx","gantTrail","gantFx","tsBase","tsFx"].forEach(setup);
+
+function sizeAll(){
+  const r = DPR();
+  for(const k in CV){
+    const o = CV[k], b = o.c.getBoundingClientRect();
+    const w = Math.max(10, Math.round(b.width)), h = Math.max(10, Math.round(b.height));
+    if(o.w !== w || o.h !== h || o.r !== r){
+      o.w=w; o.h=h; o.r=r; o.c.width = w*r; o.c.height = h*r;
+      o.g.setTransform(r,0,0,r,0,0);
+    }
+  }
+}
+function css(v){ return getComputedStyle(document.documentElement).getPropertyValue(v).trim(); }
+
+/* ---------- polar ---------- */
+function polarGeom(){
+  const o = CV.polarTrail;
+  const half = Math.min(o.w, o.h)/2 - 16;
+  const Rpx = half*0.60;
+  const d = S.d;
+  const devScale = d ? (half*0.31)/d.maxAbsDev * S.mag : 1;
+  return {cx:o.w/2, cy:o.h/2, Rpx, half, devScale};
+}
+function niceStep(v){
+  const p = Math.pow(10, Math.floor(Math.log10(v))), m = v/p;
+  return (m<1.5?1:m<3.5?2:m<7.5?5:10)*p;
+}
+function drawPolarBase(){
+  const {c,g,w,h} = CV.polarTrail, G = polarGeom();
+  g.clearRect(0,0,w,h);
+  if(!S.d) return;
+  const {cx,cy,Rpx,half,devScale} = G;
+  g.save();
+  g.strokeStyle = css("--rule"); g.lineWidth = 1;
+  for(const a of [0, Math.PI/2, Math.PI, -Math.PI/2]){
+    g.beginPath();
+    g.moveTo(cx + Math.cos(a)*(Rpx*0.12), cy - Math.sin(a)*(Rpx*0.12));
+    g.lineTo(cx + Math.cos(a)*(half), cy - Math.sin(a)*(half));
+    g.stroke();
+  }
+  const step = niceStep(S.d.maxAbsDev/2.2);
+  const outer = (half - Rpx)/devScale;
+  g.font = '11px "IBM Plex Mono", monospace';
+  g.textAlign = "left"; g.textBaseline = "middle";
+  for(let k=1; k*step <= outer*1.001; k++){
+    for(const sgn of [1,-1]){
+      const rr = Rpx + sgn*k*step*devScale;
+      if(rr < Rpx*0.08) continue;
+      g.beginPath(); g.setLineDash([2,4]);
+      g.strokeStyle = "rgba(140,166,168,.22)";
+      g.arc(cx, cy, rr, 0, Math.PI*2); g.stroke(); g.setLineDash([]);
+    }
+    const lab = Rpx + k*step*devScale;
+    g.fillStyle = "rgba(140,166,168,.75)";
+    g.fillText("+" + (k*step).toFixed(0), cx + 5, cy - lab);
+  }
+  g.beginPath(); g.setLineDash([5,4]);
+  g.strokeStyle = css("--ref"); g.lineWidth = 1.2;
+  g.arc(cx, cy, Rpx, 0, Math.PI*2); g.stroke(); g.setLineDash([]);
+  g.fillStyle = css("--mute");
+  g.font = '11px "Space Grotesk", sans-serif';
+  g.textAlign="center";
+  g.fillText("90°  +Y", cx, cy-half-6);
+  g.fillText("270°", cx, cy+half+12);
+  g.textAlign="left";  g.fillText("0°  +X", cx+half+4, cy);
+  g.textAlign="right"; g.fillText("180°", cx-half-4, cy);
+  g.textAlign="center";
+  g.fillStyle="rgba(140,166,168,.6)";
+  g.fillText("radial deviation in µm, magnified ×" + S.mag.toFixed(1), cx, cy + half + 30);
+  g.restore();
+}
+function polarPt(i, G){
+  const d = S.d;
+  const rr = G.Rpx + d.dev[i]*G.devScale;
+  return [G.cx + rr*Math.cos(d.th[i]), G.cy - rr*Math.sin(d.th[i])];
+}
+function drawTrail(from, to, step){
+  const d = S.d; if(!d) return;
+  const g = CV.polarTrail.g, G = polarGeom();
+  g.lineWidth = 1.3; g.lineJoin = "round";
+  let cur = 0, open = false;
+  for(let i = Math.max(1, from); i <= to; i += step){
+    const on = d.onc[i] && d.lap[i] >= 0;
+    const col = !on ? 0 : (d.dir[i] > 0 ? 1 : -1);
+    if(col !== cur || !open){
+      if(open) g.stroke();
+      g.beginPath();
+      g.strokeStyle = col === 1 ? css("--ccw") : col === -1 ? css("--cw") : "rgba(140,166,168,.25)";
+      const p0 = polarPt(Math.max(0,i-step), G); g.moveTo(p0[0], p0[1]);
+      cur = col; open = true;
+    }
+    const p = polarPt(i, G); g.lineTo(p[0], p[1]);
+  }
+  if(open) g.stroke();
+}
+function rebuildTrail(idx){
+  drawPolarBase();
+  const step = Math.max(1, Math.floor(idx/26000));
+  drawTrail(1, idx, step);
+  S.trailIdx = idx;
+}
+
+/* ---------- gantry ---------- */
+function gantGeom(){
+  const o = CV.gantTrail, d = S.d;
+  if(!d) return null;
+  const b = d.bounds, padm = Math.max(12, (b.xb-b.xa)*0.1);
+  const x0=b.xa-padm, x1=b.xb+padm, y0=b.ya-padm, y1=b.yb+padm;
+  const pad = 26;
+  const s = Math.min((o.w-2*pad)/(x1-x0), (o.h-2*pad)/(y1-y0));
+  const ox = (o.w - (x1-x0)*s)/2, oy = (o.h - (y1-y0)*s)/2;
+  return {x0,y0,s, X:v=>ox+(v-x0)*s, Y:v=>o.h-oy-(v-y0)*s, x1, y1};
+}
+function drawGantBase(){
+  const {g,w,h} = CV.gantTrail; g.clearRect(0,0,w,h);
+  const G = gantGeom(); if(!G) return;
+  g.strokeStyle = css("--rule"); g.lineWidth = 1;
+  g.strokeRect(G.X(G.x0)+.5, G.Y(G.y1)+.5, (G.x1-G.x0)*G.s, (G.y1-G.y0)*G.s);
+}
+function drawGantTrail(from, to, step){
+  const d = S.d, g = CV.gantTrail.g, G = gantGeom(); if(!G) return;
+  g.strokeStyle = "rgba(140,166,168,.32)"; g.lineWidth = 1;
+  g.beginPath();
+  const p0 = Math.max(0, from-1);
+  g.moveTo(G.X(d.x[p0]), G.Y(d.y[p0]));
+  for(let i=Math.max(1,from); i<=to; i+=step) g.lineTo(G.X(d.x[i]), G.Y(d.y[i]));
+  g.stroke();
+}
+function rebuildGant(idx){
+  drawGantBase();
+  drawGantTrail(1, idx, Math.max(1, Math.floor(idx/9000)));
+  S.gTrailIdx = idx;
+}
+function drawGantFx(i){
+  const {g,w,h} = CV.gantFx; g.clearRect(0,0,w,h);
+  const d = S.d, G = gantGeom(); if(!G) return;
+  const rackMag = 20 * S.mag;
+  const half = (d.y1[i]-d.y2[i]) * 0.5 * rackMag;
+  const ym = d.y[i];
+  const xl = G.x0, xr = G.x1;
+  g.strokeStyle = "rgba(140,166,168,.5)"; g.lineWidth = 2;
+  g.beginPath(); g.moveTo(G.X(xl), G.Y(G.y0)); g.lineTo(G.X(xl), G.Y(G.y1)); g.stroke();
+  g.beginPath(); g.moveTo(G.X(xr), G.Y(G.y0)); g.lineTo(G.X(xr), G.Y(G.y1)); g.stroke();
+  g.strokeStyle = css("--rack"); g.lineWidth = 2.5;
+  g.beginPath(); g.moveTo(G.X(xl), G.Y(ym+half)); g.lineTo(G.X(xr), G.Y(ym-half)); g.stroke();
+  for(const [xx,yy] of [[xl,ym+half],[xr,ym-half]]){
+    g.fillStyle = css("--rack");
+    g.fillRect(G.X(xx)-4, G.Y(yy)-5, 8, 10);
+  }
+  const col = d.dir[i] > 0 ? css("--ccw") : d.dir[i] < 0 ? css("--cw") : css("--ref");
+  const px = G.X(d.x[i]), py = G.Y(ym + half - (d.x[i]-xl)/(xr-xl)*2*half);
+  g.fillStyle = col;
+  g.beginPath(); g.arc(px, py, 5, 0, Math.PI*2); g.fill();
+  g.strokeStyle = "rgba(5,23,28,.9)"; g.lineWidth = 1; g.stroke();
+  $("#gtag").textContent = "Gantry, top view · racking ×" + Math.round(rackMag);
+}
+
+/* ---------- timeseries ---------- */
+function drawTsBase(){
+  const {g,w,h} = CV.tsBase; g.clearRect(0,0,w,h);
+  const d = S.d; if(!d) return;
+  const pad = 22, H = h - 2*10, mid = h/2;
+  let mx = d.maxAbsDev*1.15;
+  for(let i=0;i<d.n;i++) if(Math.abs(d.rack[i]) > mx) mx = Math.min(Math.abs(d.rack[i]), d.maxAbsDev*3);
+  const yv = v => mid - v/mx * (H/2);
+  g.strokeStyle = css("--rule"); g.lineWidth = 1;
+  g.beginPath(); g.moveTo(pad, mid+.5); g.lineTo(w-6, mid+.5); g.stroke();
+  const X = i => pad + (d.t[i]/d.dur)*(w-pad-8);
+  const step = Math.max(1, Math.floor(d.n/(w*2)));
+  g.lineWidth = 1;
+  g.strokeStyle = "rgba(121,214,163,.5)";
+  g.beginPath();
+  for(let i=0;i<d.n;i+=step){ const px=X(i), py=yv(d.rack[i]); i?g.lineTo(px,py):g.moveTo(px,py); }
+  g.stroke();
+  let cur = 0, open = false;
+  g.lineWidth = 1.2;
+  for(let i=0;i<d.n;i+=step){
+    const on = d.onc[i] && d.lap[i] >= 0;
+    const col = !on ? 0 : (d.dir[i] > 0 ? 1 : -1);
+    if(col !== cur || !open){
+      if(open) g.stroke();
+      g.beginPath();
+      g.strokeStyle = col===1?css("--ccw"):col===-1?css("--cw"):"rgba(140,166,168,.2)";
+      g.moveTo(X(i), yv(d.dev[i])); cur = col; open = true;
+    }
+    g.lineTo(X(i), yv(d.dev[i]));
+  }
+  if(open) g.stroke();
+  g.fillStyle = css("--mute"); g.font = '10.5px "IBM Plex Mono", monospace';
+  g.textAlign="left"; g.textBaseline="top";
+  g.fillText("+"+mx.toFixed(0)+" µm", 4, 6);
+  g.textBaseline="bottom"; g.fillText("−"+mx.toFixed(0), 4, h-4);
+  g.textBaseline="middle"; g.fillText("0", 4, mid);
+  CV.tsBase.map = {X, yv, pad};
+}
+function drawTsFx(i){
+  const {g,w,h} = CV.tsFx; g.clearRect(0,0,w,h);
+  const m = CV.tsBase.map; if(!m || !S.d) return;
+  const px = m.X(i);
+  g.strokeStyle = "rgba(221,239,234,.65)"; g.lineWidth = 1;
+  g.beginPath(); g.moveTo(px+.5, 0); g.lineTo(px+.5, h); g.stroke();
+  g.fillStyle = S.d.dir[i] > 0 ? css("--ccw") : S.d.dir[i] < 0 ? css("--cw") : css("--ref");
+  g.beginPath(); g.arc(px, m.yv(S.d.dev[i]), 3.2, 0, Math.PI*2); g.fill();
+}
+
+/* ---------- frame ---------- */
+function drawFx(i){
+  const {g,w,h} = CV.polarFx; g.clearRect(0,0,w,h);
+  const d = S.d; if(!d) return;
+  const G = polarGeom();
+  const [px,py] = polarPt(i, G);
+  const rx = G.cx + G.Rpx*Math.cos(d.th[i]), ry = G.cy - G.Rpx*Math.sin(d.th[i]);
+  const col = d.dir[i] > 0 ? css("--ccw") : d.dir[i] < 0 ? css("--cw") : css("--ref");
+  g.strokeStyle = col; g.lineWidth = 1; g.globalAlpha = .75;
+  g.beginPath(); g.moveTo(rx, ry); g.lineTo(px, py); g.stroke(); g.globalAlpha = 1;
+  g.fillStyle = col;
+  g.beginPath(); g.arc(px, py, 4.5, 0, Math.PI*2); g.fill();
+  g.strokeStyle = "rgba(5,23,28,.85)"; g.lineWidth = 1.2; g.stroke();
+  if(nearReversal(i)){
+    g.strokeStyle = css("--flag"); g.lineWidth = 1.2;
+    g.beginPath(); g.arc(px, py, 10, 0, Math.PI*2); g.stroke();
+  }
+  drawGantFx(i);
+  drawTsFx(i);
+  readout(i);
+}
+function nearReversal(i){
+  const d = S.d;
+  if(!d.onc[i] || !d.dir[i]) return false;
+  const a = d.th[i];
+  for(const q of [0, Math.PI/2, Math.PI, -Math.PI/2]){
+    let dd = Math.atan2(Math.sin(a-q), Math.cos(a-q));
+    if(d.dir[i]*dd > -0.012 && d.dir[i]*dd < 0.14) return true;
+  }
+  return false;
+}
+function readout(i){
+  const d = S.d;
+  const deg = (d.th[i]*180/Math.PI + 360) % 360;
+  $("#rT").textContent   = d.t[i].toFixed(3) + " s";
+  $("#rTh").textContent  = deg.toFixed(1) + "°";
+  $("#rDev").textContent = (d.onc[i] ? d.dev[i].toFixed(1) : "—") + " µm";
+  $("#rRack").textContent= d.rack[i].toFixed(1) + " µm";
+  $("#rX").textContent   = d.x[i].toFixed(3);
+  $("#rY").textContent   = d.y[i].toFixed(3);
+  $("#rZ").textContent   = d.z[i].toFixed(3);
+  $("#rV").textContent   = d.spd[i].toFixed(0) + " mm/min";
+}
+
+function seek(t, force){
+  const d = S.d; if(!d) return;
+  S.t = Math.max(0, Math.min(d.dur, t));
+  let i = S.idx;
+  if(force || d.t[i] > S.t){ i = 0; }
+  while(i+1 < d.n && d.t[i+1] <= S.t) i++;
+  S.idx = i;
+  if(i < S.trailIdx) rebuildTrail(i);
+  else if(i > S.trailIdx){ drawTrail(S.trailIdx+1, i, 1); S.trailIdx = i; }
+  if(i < S.gTrailIdx) rebuildGant(i);
+  else if(i > S.gTrailIdx){ drawGantTrail(S.gTrailIdx+1, i, 1); S.gTrailIdx = i; }
+  drawFx(i);
+  $("#clock").textContent = S.t.toFixed(3) + " / " + d.dur.toFixed(3) + " s";
+  const sc = $("#scrub");
+  if(document.activeElement !== sc) sc.value = Math.round(S.t/d.dur*2000);
+}
+
+let raf = 0;
+function tick(ts){
+  raf = requestAnimationFrame(tick);
+  if(!S.playing || !S.d){ S.last = ts; return; }
+  let dt = (ts - S.last)/1000; S.last = ts;
+  if(dt > 0.25) dt = 0.25;
+  let sp = S.speed;
+  if(S.autoslow && nearReversal(S.idx)) sp *= 0.12;
+  let nt = S.t + dt*sp;
+  if(nt >= S.d.dur){
+    if(S.loop){ nt = 0; seek(0, true); return; }
+    nt = S.d.dur; setPlay(false);
+  }
+  seek(nt);
+}
+requestAnimationFrame(ts => { S.last = ts; tick(ts); });
+
+function setPlay(p){
+  S.playing = p;
+  $("#btnPlay").textContent = p ? "❚❚" : "▶";
+}
+
+/* ---------- load ---------- */
+function fmt(v, u){ return v == null ? "—" : v.toFixed(2) + " " + u; }
+function show(d){
+  S.d = d; S.idx = 0; S.t = 0; S.trailIdx = -1; S.gTrailIdx = -1;
+  $("#empty").style.display = "none";
+  $("#fname").textContent = d.name;
+  const m = d.m;
+  $("#mR").textContent = d.fit.R.toFixed(4) + " mm";
+  $("#mC").textContent = d.fit.a.toFixed(2) + ", " + d.fit.b.toFixed(2);
+  $("#mF").textContent = m.feed ? m.feed.toFixed(0) + " mm/min" : "—";
+  $("#mL").textContent = d.laps.length + (d.laps.length ? "  (" + d.laps.filter(l=>l.dir>0).length + " ccw / " + d.laps.filter(l=>l.dir<0).length + " cw)" : "");
+  $("#mGb").textContent  = fmt(m.Gb, "µm");
+  $("#mGccw").textContent= fmt(m.ccw && m.ccw.G, "µm");
+  $("#mGcw").textContent = fmt(m.cw && m.cw.G, "µm");
+  $("#mD").textContent   = fmt(m.D, "µm");
+  $("#mDpk").textContent = fmt(m.Dpk, "µm");
+  $("#mFccw").textContent= m.ccw ? m.ccw.max.toFixed(1) + " / " + m.ccw.min.toFixed(1) : "—";
+  $("#mFcw").textContent = m.cw  ? m.cw.max.toFixed(1)  + " / " + m.cw.min.toFixed(1)  : "—";
+  $("#mRack").textContent= fmt(m.rackRange, "µm");
+  $("#mN").textContent   = d.n.toLocaleString();
+  $("#mHz").textContent  = m.rate.toFixed(0) + " Hz";
+  sizeAll(); drawTsBase(); rebuildTrail(0); rebuildGant(0); seek(0, true);
+  setPlay(!window.matchMedia("(prefers-reduced-motion: reduce)").matches);
+}
+function fail(msg){
+  document.body.classList.remove("busy");
+  $("#err").textContent = msg;
+  $("#empty").style.display = "grid";
+}
+function loadFile(f){
+  if(!f) return;
+  $("#err").textContent = "";
+  document.body.classList.add("busy");
+  const fr = new FileReader();
+  fr.onerror = () => fail("The file could not be read.");
+  fr.onload = () => {
+    setTimeout(() => {
+      try { show(parseCSV(fr.result, f.name)); document.body.classList.remove("busy"); }
+      catch(e){ fail(e.message || String(e)); }
+    }, 20);
+  };
+  fr.readAsText(f);
+}
+
+/* ---------- wiring ---------- */
+$("#btnOpen").onclick = $("#btnOpen2").onclick = () => $("#file").click();
+$("#file").onchange = e => { loadFile(e.target.files[0]); e.target.value = ""; };
+$("#btnDemo").onclick = $("#btnDemo2").onclick = () => {
+  document.body.classList.add("busy");
+  setTimeout(()=>{ try{ show(synthetic()); document.body.classList.remove("busy"); }catch(e){ fail(e.message); } }, 20);
+};
+window.addEventListener("dragover", e => { e.preventDefault(); document.body.classList.add("dragging"); });
+window.addEventListener("dragleave", e => { if(e.relatedTarget === null) document.body.classList.remove("dragging"); });
+window.addEventListener("drop", e => {
+  e.preventDefault(); document.body.classList.remove("dragging");
+  loadFile(e.dataTransfer.files[0]);
+});
+
+$("#btnPlay").onclick = () => setPlay(!S.playing);
+$("#btnRew").onclick  = () => seek(0, true);
+$("#btnLoop").onclick = e => { S.loop = !S.loop; e.currentTarget.setAttribute("aria-pressed", S.loop); };
+$("#scrub").oninput   = e => { if(S.d) seek(+e.target.value/2000*S.d.dur); };
+
+const SPMIN = Math.log10(0.002), SPMAX = Math.log10(1);
+function setSpeed(v){
+  S.speed = v;
+  $("#speedV").textContent = (v >= 0.1 ? v.toFixed(2) : v.toFixed(3)) + "×";
+  $("#speed").value = Math.round((Math.log10(v)-SPMIN)/(SPMAX-SPMIN)*1000);
+}
+$("#speed").oninput = e => {
+  const v = Math.pow(10, SPMIN + (+e.target.value/1000)*(SPMAX-SPMIN));
+  S.speed = v;
+  $("#speedV").textContent = (v >= 0.1 ? v.toFixed(2) : v.toFixed(3)) + "×";
+};
+document.querySelectorAll(".chips button").forEach(b => b.onclick = () => setSpeed(+b.dataset.sp));
+
+const MGMIN = Math.log10(0.2), MGMAX = Math.log10(6);
+$("#mag").oninput = e => {
+  S.mag = Math.pow(10, MGMIN + (+e.target.value/1000)*(MGMAX-MGMIN));
+  $("#magV").textContent = "×" + S.mag.toFixed(1);
+  if(S.d){ rebuildTrail(S.idx); drawFx(S.idx); }
+};
+$("#autoslow").onchange = e => S.autoslow = e.target.checked;
+
+$("#btnShot").onclick = () => {
+  if(!S.d) return;
+  const a = CV.polarTrail, out = document.createElement("canvas");
+  out.width = a.c.width; out.height = a.c.height;
+  const g = out.getContext("2d");
+  g.fillStyle = css("--deep"); g.fillRect(0,0,out.width,out.height);
+  g.drawImage(a.c,0,0); g.drawImage(CV.polarFx.c,0,0);
+  const link = document.createElement("a");
+  link.download = (S.d.name.replace(/\.csv$/i,"") || "circular") + "_polar.png";
+  link.href = out.toDataURL("image/png");
+  link.click();
+};
+
+addEventListener("keydown", e => {
+  if(e.target.tagName === "INPUT" && e.target.type !== "range") return;
+  if(e.code === "Space"){ e.preventDefault(); setPlay(!S.playing); }
+  if(e.code === "ArrowRight"){ e.preventDefault(); seek(S.t + 0.02); }
+  if(e.code === "ArrowLeft"){ e.preventDefault(); seek(S.t - 0.02); }
+});
+
+let rt = 0;
+new ResizeObserver(() => {
+  clearTimeout(rt);
+  rt = setTimeout(() => {
+    sizeAll();
+    if(S.d){ drawTsBase(); rebuildTrail(S.idx); rebuildGant(S.idx); drawFx(S.idx); }
+  }, 80);
+}).observe(document.body);
+sizeAll();
+setSpeed(1);
+$("#magV").textContent = "×1.0";
+</script>
+</body>
+</html>
